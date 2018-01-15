@@ -1,0 +1,126 @@
+<form>
+  <label>Demo</label>
+  <description>Response Times for selected Web Transactions and Datacenters</description>
+  <fieldset autoRun="true" submitButton="false">
+    <input type="time" token="field1" searchWhenChanged="true">
+      <label>Select a time range</label>
+      <default>
+        <earliest>0</earliest>
+        <latest></latest>
+      </default>
+    </input>
+    <input type="dropdown" token="pickhrtask" searchWhenChanged="true">
+      <label>Select a HR Task:</label>
+      <fieldForLabel>testname</fieldForLabel>
+      <fieldForValue>testname</fieldForValue>
+      <search>
+        <query>sourcetype=csv | stats count by testname</query>
+      </search>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <initialValue>Uncached Login</initialValue>
+      <change>
+        <condition value="Ad Hoc Report Run">
+          <set token="use_these_fields">"Generate Report" "Report Options" "Ad Hoc Reports" "Analytics" "Reports" "Home"</set>
+        </condition>
+        <condition value="Agency Job Listing">
+          <set token="use_these_fields">"Operations Manager" "Job Listings" "Agency Access" "Login"</set>
+        </condition>
+        <condition value="Candidate Search">
+          <set token="use_these_fields">"Candidate Details" "Search Results" "Search for Candidates" "Job Requisitions" "Home"</set>
+        </condition>
+        <condition value="Job Req Search">
+          <set token="use_these_fields">"Search Results" "Career Opportunities"</set>
+        </condition>
+        <condition value="Manage Resume">
+          <set token="use_these_fields">"Upload Resume" "My Candidate Profile" "Careers" "Home"</set>
+        </condition>
+        <condition value="PM Form Update">
+          <set token="use_these_fields">"Save" "Performance Review" "Performance" "Home"</set>
+        </condition>
+        <condition value="Publish Scorecard">
+          <set token="use_these_fields">"Talent Card" "Create Talent Card" "Scorecard" "Mya Cooper Profile" "Employee Files" "Home"</set>
+        </condition>
+        <condition value="Query Metadata">
+          <set token="use_these_fields">"Query Metadata"</set>
+        </condition>
+        <condition value="Uncached Login">
+          <set token="use_these_fields">"Log out" "Home" "Log in" "Company ID"</set>
+        </condition>
+        <condition value="View Employee Profile">
+          <set token="use_these_fields">"Profile" "Employee Files" "Home"</set>
+        </condition>
+        <condition value="Agency Job Listing">
+          <set token="use_these_fields">"Operations Manager" "Job Listings" "Agency Access" "Login"</set>
+        </condition>
+      </change>
+    </input>
+    <input type="dropdown" token="pickdc" searchWhenChanged="true">
+      <label>Select a Datacenter:</label>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <default>"DC08"</default>
+      <fieldForLabel>dc</fieldForLabel>
+      <fieldForValue>dc</fieldForValue>
+      <search>
+        <query>sourcetype=csv testname=$pickhrtask$ | stats count by dc</query>
+        <earliest>-24h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Average request response times in seconds for SF HR task:  $pickhrtask$   Datacenter:  $pickdc$</title>
+        <search>
+          <query>sourcetype=csv testname=$pickhrtask$ dc=$pickdc$ | timechart avg(rtimesec) by pname | fields _raw,_time $use_these_fields$</query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Average, Min and Max response times with count and errors for SF HR TASK:  $pickhrtask$     Datacenter: $pickdc$</title>
+        <search>
+          <query>sourcetype=csv testname=$pickhrtask$ dc=$pickdc$ | bucket _time span=1d | eval weekday=strftime(_time, "%A") | eval datepart=strftime( _time, "%m-%d-%Y") | eval timepart=strftime( _time, "%H:%M:%S")| stats count avg(rtimesec), min(rtimesec), max(rtimesec) sum(rcint)  by datepart, weekday, transaction, pseq, pname | rename  datepart as "Date" weekday as "Day" timepart as "Time" transaction as "SF SAP HR Task" count as "Count" pname as "Step", sum(rcint) as "Errors" avg(rtimesec) as "Average" min(rtimesec) as "Min" max(rtimesec) as "Max" | sort - Date | fields - pseq
+          </query>
+          <earliest>$field1.earliest$</earliest>
+          <latest>$field1.latest$</latest>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="rowNumbers">true</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>
+
